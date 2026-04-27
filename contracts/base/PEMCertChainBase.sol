@@ -107,18 +107,22 @@ abstract contract PEMCertChainBase {
     }
 
     function _getCertHash(CA ca) internal view returns (bool success, bytes32 certHash) {
-        bytes32 attestationId = pcsDao.pcsCertAttestations(ca);
-        success = attestationId != bytes32(0);
-        if (success) {
-            certHash = pcsDao.getCollateralHash(attestationId);
+        bytes32 key = pcsDao.PCS_KEY(ca, false);
+        try pcsDao.getCollateralHash(key) returns (bytes32 hash) {
+            certHash = hash;
+            success = true;
+        } catch {
+            success = false;
         }
     }
 
     function _getCrlHash(CA ca) internal view returns (bool success, bytes32 crlHash) {
-        bytes32 attestationId = pcsDao.pcsCrlAttestations(ca);
-        success = attestationId != bytes32(0);
-        if (success) {
-            crlHash = pcsDao.getCollateralHash(attestationId);
+        bytes32 key = pcsDao.PCS_KEY(ca, true);
+        try pcsDao.getCollateralHash(key) returns (bytes32 hash) {
+            crlHash = hash;
+            success = true;
+        } catch {
+            success = false;
         }
     }
 

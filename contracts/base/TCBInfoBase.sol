@@ -5,7 +5,9 @@ import {
     FmspcTcbHelper,
     TCBLevelsObj,
     TCBStatus,
-    TcbInfoBasic
+    TcbId,
+    TcbInfoBasic,
+    TcbInfoJsonObj
 } from "@automata-network/on-chain-pccs/helpers/FmspcTcbHelper.sol";
 import {EnclaveIdTcbStatus} from "@automata-network/on-chain-pccs/helpers/EnclaveIdentityHelper.sol";
 import {FmspcTcbDao} from "@automata-network/on-chain-pccs/bases/FmspcTcbDao.sol";
@@ -29,12 +31,16 @@ abstract contract TCBInfoBase {
     }
 
     function _getTcbInfo(bytes6 fmspc) internal view returns (bool success, TCBLevelsObj[] memory tcbLevels) {
-        bytes32 key = keccak256(abi.encodePacked(uint8(0), fmspc, uint32(2)));
-        bytes32 attestationId = tcbDao.fmspcTcbInfoAttestations(key);
-        success = attestationId != bytes32(0);
+        bytes32 key = tcbDao.FMSPC_TCB_KEY(uint8(TcbId.SGX), fmspc, uint32(2));
+        bytes memory data = tcbDao.getAttestedData(key);
+        success = data.length != 0;
         if (success) {
-            bytes memory data = tcbDao.getAttestedData(attestationId);
-            (, tcbLevels,,) = abi.decode(data, (TcbInfoBasic, TCBLevelsObj[], string, bytes));
+            (, bytes memory encodedTcbLevels,) = abi.decode(data, (TcbInfoBasic, bytes, TcbInfoJsonObj));
+            bytes[] memory tcbLevelBlobs = abi.decode(encodedTcbLevels, (bytes[]));
+            tcbLevels = new TCBLevelsObj[](tcbLevelBlobs.length);
+            for (uint256 i = 0; i < tcbLevelBlobs.length; i++) {
+                tcbLevels[i] = tcbHelper.tcbLevelsObjFromBytes(tcbLevelBlobs[i]);
+            }
         }
     }
 
