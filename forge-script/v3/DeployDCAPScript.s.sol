@@ -6,6 +6,7 @@ import "../../contracts/v3/AutomataDcapV3Attestation.sol";
 
 contract DeployDCAPScript is Script {
     uint256 deployerKey = vm.envUint("PRIVATE_KEY");
+    address internal constant DEFAULT_P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
 
     function run() public {
         address enclaveIdDaoAddr = vm.envAddress("ENCLAVE_ID_DAO");
@@ -15,6 +16,7 @@ contract DeployDCAPScript is Script {
         address tcbHelperAddr = vm.envAddress("FMSPC_TCB_HELPER");
         address crlHelperAddr = vm.envAddress("X509_CRL_HELPER");
         address pcsDaoAddr = vm.envAddress("PCS_DAO");
+        address p256VerifierAddr = _envOrAddress("P256_VERIFIER_ADDRESS", DEFAULT_P256_VERIFIER);
         address risc0Verifier = vm.envAddress("RISC0_VERIFIER");
         vm.broadcast(deployerKey);
 
@@ -28,10 +30,19 @@ contract DeployDCAPScript is Script {
             tcbHelperAddr,
             crlHelperAddr,
             pcsDaoAddr,
+            p256VerifierAddr,
             risc0Verifier,
             imageId
         );
 
         console.log("[LOG] AutomataDcapV3Attestation deployed to %s", address(attestation));
+    }
+
+    function _envOrAddress(string memory key, address defaultValue) private view returns (address value) {
+        try vm.envAddress(key) returns (address configured) {
+            return configured;
+        } catch {
+            return defaultValue;
+        }
     }
 }

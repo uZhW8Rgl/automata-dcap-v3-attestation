@@ -21,9 +21,11 @@ abstract contract PEMCertChainBase {
     PCKHelper public pckHelper;
     X509CRLHelper public crlHelper;
     PcsDao public pcsDao;
+    address public p256Verifier;
 
     /// @dev https://github.com/daimo-eth/p256-verifier/blob/master/src/P256.sol
-    address internal constant P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
+    address internal constant DEFAULT_P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
+    address internal constant NATIVE_P256_VERIFIER = 0x0000000000000000000000000000000000000100;
 
     string constant PLATFORM_ISSUER_NAME = "Intel SGX PCK Platform CA";
     string constant PROCESSOR_ISSUER_NAME = "Intel SGX PCK Processor CA";
@@ -32,14 +34,15 @@ abstract contract PEMCertChainBase {
     // the uncompressed (0x04) prefix is not included in the pubkey pre-image
     bytes32 constant ROOTCA_PUBKEY_HASH = 0x89f72d7c488e5b53a77c23ebcb36970ef7eb5bcf6658e9b8292cfbe4703a8473;
 
-    constructor(address _pckHelper, address _crlHelper, address _pcsDao) {
-        _setCertBaseConfig(_pckHelper, _crlHelper, _pcsDao);
+    constructor(address _pckHelper, address _crlHelper, address _pcsDao, address _p256Verifier) {
+        _setCertBaseConfig(_pckHelper, _crlHelper, _pcsDao, _p256Verifier);
     }
 
-    function _setCertBaseConfig(address _pckHelper, address _crlHelper, address _pcsDao) internal {
+    function _setCertBaseConfig(address _pckHelper, address _crlHelper, address _pcsDao, address _p256Verifier) internal {
         pckHelper = PCKHelper(_pckHelper);
         crlHelper = X509CRLHelper(_crlHelper);
         pcsDao = PcsDao(_pcsDao);
+        p256Verifier = _p256Verifier == address(0) ? DEFAULT_P256_VERIFIER : _p256Verifier;
     }
 
     function _parsePck(bytes memory der, uint256 extensionPtr) internal view returns (PCKCertTCB memory pckTCB) {
@@ -131,9 +134,34 @@ abstract contract PEMCertChainBase {
             uint256(bytes32(key.substring(0, 32))),
             uint256(bytes32(key.substring(32, 32)))
         );
-        (bool success, bytes memory ret) = P256_VERIFIER.staticcall(args);
-        assert(success); // never reverts, always returns 0 or 1
+        (bool hasResult, bool nativeVerified) = _tryP256Verify(p256Verifier, args);
+        if (hasResult) {
+            return nativeVerified;
+        }
 
+        if (p256Verifier != DEFAULT_P256_VERIFIER) {
+            (hasResult, verified) = _tryP256Verify(DEFAULT_P256_VERIFIER, args);
+            assert(hasResult); // require either configured verifier or fallback contract
+            return verified;
+        }
+
+        if (p256Verifier != NATIVE_P256_VERIFIER) {
+            (hasResult, verified) = _tryP256Verify(NATIVE_P256_VERIFIER, args);
+            if (hasResult) {
+                return verified;
+            }
+        }
+
+        assert(false); // no working P256 verifier available
+    }
+
+    function _tryP256Verify(address verifier, bytes memory args) private view returns (bool hasResult, bool verified) {
+        (bool success, bytes memory ret) = verifier.staticcall(args);
+        if (!success || ret.length != 32) {
+            return (false, false);
+        }
+
+        hasResult = true;
         verified = abi.decode(ret, (uint256)) == 1;
     }
 }

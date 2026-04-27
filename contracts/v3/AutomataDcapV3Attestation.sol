@@ -38,11 +38,12 @@ contract AutomataDcapV3Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         address tcbHelperAddr,
         address crlHelperAddr,
         address pcsDaoAddr,
+        address p256VerifierAddr,
         address risc0Verifier,
         bytes32 imageId
     )
         EnclaveIdBase(enclaveIdDaoAddr, enclaveIdHelperAddr)
-        PEMCertChainBase(pckHelperAddr, crlHelperAddr, pcsDaoAddr)
+        PEMCertChainBase(pckHelperAddr, crlHelperAddr, pcsDaoAddr, p256VerifierAddr)
         TCBInfoBase(tcbDaoAddr, tcbHelperAddr)
     {
         _initializeOwner(msg.sender);
@@ -60,10 +61,11 @@ contract AutomataDcapV3Attestation is IAttestation, EnclaveIdBase, PEMCertChainB
         address tcbDaoAddr,
         address tcbHelperAddr,
         address crlHelperAddr,
-        address pcsDaoAddr
+        address pcsDaoAddr,
+        address p256VerifierAddr
     ) external onlyOwner {
         _setEnclaveIdBaseConfig(enclaveIdDaoAddr, enclaveIdHelperAddr);
-        _setCertBaseConfig(pckHelperAddr, crlHelperAddr, pcsDaoAddr);
+        _setCertBaseConfig(pckHelperAddr, crlHelperAddr, pcsDaoAddr, p256VerifierAddr);
         _setTcbBaseConfig(tcbDaoAddr, tcbHelperAddr);
     }
 

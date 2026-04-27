@@ -6,6 +6,7 @@ import "../../contracts/v3/AutomataDcapV3Attestation.sol";
 
 contract ConfigDCAPScript is Script {
     uint256 deployerKey = vm.envUint("PRIVATE_KEY");
+    address internal constant DEFAULT_P256_VERIFIER = 0xc2b78104907F722DABAc4C69f826a522B2754De4;
 
     address enclaveIdDaoAddr = vm.envAddress("ENCLAVE_ID_DAO");
     address enclaveIdHelperAddr = vm.envAddress("ENCLAVE_IDENTITY_HELPER");
@@ -14,6 +15,7 @@ contract ConfigDCAPScript is Script {
     address tcbHelperAddr = vm.envAddress("FMSPC_TCB_HELPER");
     address crlHelperAddr = vm.envAddress("X509_CRL_HELPER");
     address pcsDaoAddr = vm.envAddress("PCS_DAO");
+    address p256VerifierAddr = _envOrAddress("P256_VERIFIER_ADDRESS", DEFAULT_P256_VERIFIER);
     address risc0Verifier = vm.envAddress("RISC0_VERIFIER");
 
     address dcapAddress = vm.envAddress("DCAP_ADDRESS");
@@ -29,7 +31,8 @@ contract ConfigDCAPScript is Script {
             tcbDaoAddr,
             tcbHelperAddr,
             crlHelperAddr,
-            pcsDaoAddr
+            pcsDaoAddr,
+            p256VerifierAddr
         );
     }
 
@@ -38,5 +41,13 @@ contract ConfigDCAPScript is Script {
         vm.broadcast(deployerKey);
 
         attestation.updateRisc0Config(verifier, imageId);
+    }
+
+    function _envOrAddress(string memory key, address defaultValue) private view returns (address value) {
+        try vm.envAddress(key) returns (address configured) {
+            return configured;
+        } catch {
+            return defaultValue;
+        }
     }
 }
